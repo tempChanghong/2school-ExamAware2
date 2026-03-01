@@ -93,7 +93,33 @@ export function initWebSocketServer(server: HttpServer): void {
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const remoteIp = req.socket.remoteAddress ?? 'unknown'
-    console.log(`${LOG_TAG} 新连接: ${remoteIp}`)
+    console.log(`${LOG_TAG} 新连接请求: ${remoteIp}`)
+
+    // 1. 安全加固：WebSocket 终端连接鉴权
+    const terminalToken = process.env.TERMINAL_TOKEN
+    if (!terminalToken) {
+      console.error(`${LOG_TAG} 致命错误: 服务端未配置 TERMINAL_TOKEN，拒绝所有 WebSocket 连接！`)
+      ws.close(1008, 'Unauthorized: Server configuration missing')
+      return
+    }
+
+    try {
+      // 安全地解析 URL 中的 query 参数
+      const url = new URL(req.url || '', 'http://localhost')
+      const token = url.searchParams.get('token')
+
+      if (!token || token !== terminalToken) {
+        console.warn(`${LOG_TAG} 鉴权失败: ${remoteIp} (携带 Token: ${token ?? '空'})`)
+        ws.close(1008, 'Unauthorized: Invalid token')
+        return
+      }
+    } catch (err) {
+      console.error(`${LOG_TAG} 解析请求 URL 异常:`, err)
+      ws.close(1008, 'Unauthorized: Bad Request')
+      return
+    }
+
+    console.log(`${LOG_TAG} 鉴权通过，新连接确立: ${remoteIp}`)
 
     // 加入待注册集合
     pendingConnections.add(ws)

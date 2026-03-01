@@ -6,6 +6,9 @@
  * 将 Koa HTTP 服务和 WebSocket 服务合并到同一端口启动
  */
 
+import * as dotenv from 'dotenv'
+dotenv.config()
+
 import http from 'node:http'
 import Koa from 'koa'
 import cors from '@koa/cors'
@@ -37,8 +40,11 @@ app.on('error', (err, ctx) => {
 // CORS —— 允许所有来源（方便 Admin Web 后台跨域访问）
 app.use(cors({ origin: '*' }))
 
-// Body 解析 —— 解析 JSON 请求体
-app.use(bodyParser())
+// Body 解析 —— 解析 JSON 请求体，并放宽到 10mb 以支持大配置文件下发
+app.use(bodyParser({
+  jsonLimit: '10mb',
+  textLimit: '10mb'
+}))
 
 // 请求日志
 app.use(async (ctx, next) => {
