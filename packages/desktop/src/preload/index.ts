@@ -113,6 +113,13 @@ const api = {
       ipcRenderer.invoke('cast:peer-config', { peerId, shareId }),
     send: (peerId: string, config: string) => ipcRenderer.invoke('cast:send', { peerId, config })
   },
+  centralControl: {
+    onStatusChanged: (listener: (status: string) => void) => {
+      const wrapped = (_e: any, status: string) => listener(status)
+      ipcRenderer.on('central-control:status-changed', wrapped)
+      return () => ipcRenderer.off('central-control:status-changed', wrapped)
+    }
+  },
   logging: {
     getConfig: () => ipcRenderer.invoke('logging:get-config'),
     setConfig: (cfg: any) => ipcRenderer.invoke('logging:set-config', cfg),

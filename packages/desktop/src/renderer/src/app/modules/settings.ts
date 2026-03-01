@@ -116,10 +116,17 @@ export const settingsModule: AppModule = {
         component: () => import('@renderer/views/settings/LoggingSettings.vue')
       },
       {
+        id: 'central-control',
+        label: '集控服务',
+        icon: 'server',
+        order: 7,
+        component: () => import('@renderer/views/settings/CentralControlSettings.vue')
+      },
+      {
         id: 'plugins',
         label: '插件',
         icon: 'extension',
-        order: 7,
+        order: 8,
         component: () => import('@renderer/views/settings/PluginSettings.vue')
       },
       {

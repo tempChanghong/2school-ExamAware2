@@ -1,6 +1,8 @@
+import { watch, type WatchStopHandle } from 'vue'
 import type { App } from 'vue'
 import type { AppModule } from '../types'
 import { DisposerGroup } from '@renderer/runtime/disposable'
+import { useCentralControl } from '@renderer/composables/useCentralControl'
 
 export interface HomeButtonMeta {
   id: string
@@ -105,19 +107,38 @@ export const homeButtonsModule: AppModule = {
       }
     })
 
-    add({
-      id: 'control',
-      label: '集控',
-      icon: 'server',
-      theme: 'default',
-      order: 4,
-      action: () => {
-        // TODO: 实现集控功能
-        console.log('集控功能待实现')
-      }
+    // ===== 集控按钮：响应式更新 =====
+    // 使用 watch 监听连接状态变化，通过「注销 → 重新注册」策略实现按钮 UI 的实时刷新。
+    // order 固定为 4，防止重注册时发生位置跳动。
+    const { status, statusLabel, statusTheme, statusIcon } = useCentralControl()
+
+    const registerControlButton = () => {
+      registry.unregister('control')
+      registry.register({
+        id: 'control',
+        label: statusLabel.value,
+        icon: statusIcon.value,
+        theme: statusTheme.value,
+        order: 4,
+        action: () => {
+          window.api?.ipc?.send('open-settings-window', 'central-control')
+        }
+      })
+    }
+
+    // 首次注册
+    registerControlButton()
+
+    // 状态变化时自动重新注册
+    const stopWatch: WatchStopHandle = watch(status, () => {
+      registerControlButton()
     })
 
-    // 添加更多按钮来展示分页效果
+    // 将 watch 清理函数加入 disposer group
+    group.add(stopWatch)
+
+    // ===== 其他默认按钮 =====
+
     add({
       id: 'settings',
       label: '设置',

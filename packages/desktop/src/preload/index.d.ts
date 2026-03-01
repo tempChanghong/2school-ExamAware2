@@ -81,6 +81,9 @@ declare global {
         peerConfig: (peerId: string, shareId?: string) => Promise<string | null>
         send: (peerId: string, config: string) => Promise<any>
       }
+      centralControl: {
+        onStatusChanged: (listener: (status: string) => void) => () => void
+      }
       logging: {
         getConfig: () => Promise<any>
         setConfig: (cfg: any) => Promise<any>
