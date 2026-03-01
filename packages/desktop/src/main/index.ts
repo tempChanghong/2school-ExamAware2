@@ -30,6 +30,7 @@ import type { DeepLinkPayload } from '../shared/types/deepLink'
 import { applyDeepLinkControllers } from './deepLink/decorators'
 import { CoreDeepLinkController } from './deepLink/coreDeepLinkController'
 import { composeVersionLabel } from '../shared/appInfo'
+import { CentralControlClient } from './centralControlClient'
 import bannerText from './banner.txt?raw'
 
 protocol.registerSchemesAsPrivileged([
@@ -78,6 +79,7 @@ castService.loadConfig()
 
 let pluginHost: PluginHost | null = null
 let disposeDeepLinks: (() => void) | undefined
+let centralControlClient: CentralControlClient | null = null
 
 // Ensure a friendly app name in development and across platforms (especially macOS About menu)
 try {
@@ -200,6 +202,14 @@ app.whenReady().then(async () => {
 
   // 初始化时间同步服务
   initializeTimeSync()
+
+  // 启动集控被控端服务
+  try {
+    centralControlClient = new CentralControlClient()
+    centralControlClient.start()
+  } catch (error) {
+    appLogger.error('Failed to start Central Control Client', error as Error)
+  }
 
   // 始终注册托盘
   ensureAppTray()
@@ -406,6 +416,9 @@ app.whenReady().then(async () => {
     } catch {}
     try {
       void castService.dispose()
+    } catch {}
+    try {
+      centralControlClient?.dispose()
     } catch {}
     try {
       disposeDeepLinks?.()
