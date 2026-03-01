@@ -114,11 +114,13 @@ const api = {
     send: (peerId: string, config: string) => ipcRenderer.invoke('cast:send', { peerId, config })
   },
   centralControl: {
+    getStatus: () => ipcRenderer.invoke('central-control:get-status'),
     onStatusChanged: (listener: (status: string) => void) => {
       const wrapped = (_e: any, status: string) => listener(status)
       ipcRenderer.on('central-control:status-changed', wrapped)
       return () => ipcRenderer.off('central-control:status-changed', wrapped)
-    }
+    },
+    openDir: () => ipcRenderer.invoke('central-control:open-dir')
   },
   logging: {
     getConfig: () => ipcRenderer.invoke('logging:get-config'),

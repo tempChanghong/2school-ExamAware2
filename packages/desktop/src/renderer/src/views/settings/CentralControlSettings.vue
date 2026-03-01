@@ -90,6 +90,27 @@
             </div>
           </div>
         </div>
+
+        <t-divider />
+
+        <!-- 本地存储 -->
+        <div class="settings-item">
+          <div class="settings-item-icon">
+            <TIcon name="folder-open" size="22px" />
+          </div>
+          <div class="settings-item-main">
+            <div class="settings-item-title">本地存储目录</div>
+            <div class="settings-item-desc">
+              查看通过集控服务器下发并持久化保存在本地的考试配置文件。
+            </div>
+          </div>
+          <div class="settings-item-action">
+            <t-button variant="outline" @click="handleOpenDir">
+              <template #icon><TIcon name="folder" /></template>
+              打开目录
+            </t-button>
+          </div>
+        </div>
       </t-card>
     </t-space>
   </div>
@@ -112,4 +133,12 @@ const clientName = useSettingRef<string>('centralControl.clientName', '', { debo
 
 // ===== 连接状态（只读） =====
 const { statusLabel, statusTheme } = useCentralControl()
+
+const handleOpenDir = async () => {
+  try {
+    await window.api.centralControl.openDir()
+  } catch (error) {
+    console.error('Failed to open persistent config directory:', error)
+  }
+}
 </script>

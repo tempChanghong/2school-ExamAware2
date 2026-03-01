@@ -4,6 +4,7 @@ import {
   BrowserWindow,
   app,
   nativeTheme,
+  shell,
   type MessageBoxOptions,
   type WebContents,
   type OpenDialogOptions
@@ -225,6 +226,22 @@ export function registerIpcHandlers(ctx?: MainContext): () => void {
         createLogsWindow()
       })
     )
+
+  // 打开中央集控配置文件持久化目录
+  const openCentralControlDir = async () => {
+    const targetDir = path.join(app.getPath('userData'), 'received_exams')
+    try {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true })
+      }
+      shell.openPath(targetDir)
+    } catch (e) {
+      appLogger.error('[ipc] open central control dir failed', e as Error)
+    }
+  }
+
+  if (ctx) ctx.ipc.handle('central-control:open-dir', openCentralControlDir)
+  else group.add(handle('central-control:open-dir', openCentralControlDir))
 
   // ===== 配置存储 IPC =====
   if (ctx) {

@@ -11,7 +11,7 @@
  *   5. 状态广播 —— 连接状态变化时通过 IPC 通知所有渲染进程窗口
  */
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import WebSocket from 'ws'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -222,12 +222,25 @@ export class CentralControlClient {
       }
     })
 
-    // 如果配置已启用，则立即发起连接
+    // 如果配置已启用，则立即发起初始连接
     if (this.currentConfig.enabled && this.currentConfig.serverUrl) {
+      appLogger.info(`${LOG_TAG} 执行初始连接: ${this.currentConfig.serverUrl}`)
       this.connect()
     } else {
       appLogger.info(`${LOG_TAG} 集控服务未启用或未配置服务器地址，处于待命状态`)
+      // 主动广播一次 DISCONNECTED 状态，确保前端 UI 显示正确的初始离线图标。
+      // 注意：setStatus() 内部有去重守卫（this.status === newStatus 时直接 return），
+      // 而 this.status 初始值恰好就是 DISCONNECTED，所以这里必须绕过它直接广播。
+      this.broadcastToWindows(IPC_STATUS_CHANNEL, ConnectionStatus.DISCONNECTED)
     }
+
+    try {
+      ipcMain.removeHandler('central-control:get-status')
+    } catch {}
+    ipcMain.handle('central-control:get-status', () => {
+      appLogger.debug(`${LOG_TAG} 渲染进程拉取集控状态: ${this.status}`)
+      return this.status
+    })
   }
 
   /**
@@ -246,6 +259,10 @@ export class CentralControlClient {
     this.disposed = true
 
     appLogger.info(`${LOG_TAG} 服务销毁`)
+
+    try {
+      ipcMain.removeHandler('central-control:get-status')
+    } catch {}
 
     // 取消配置监听
     this.unsubscribeConfig?.()
@@ -578,7 +595,7 @@ export class CentralControlClient {
   /**
    * 处理 PUSH_EXAM_CONFIG 指令：
    *   1. 根据 encoding 解码数据（Base64 或原文）
-   *   2. 写入系统临时目录的 .ea2 文件
+   *   2. 持久化保存到 userData/received_exams 目录
    *   3. 调用 setSharedConfig() 更新内存中的共享配置
    *   4. 通过 IPC 广播通知渲染进程刷新界面
    */
@@ -599,29 +616,40 @@ export class CentralControlClient {
         configContent = data
       }
 
-      // 写入临时文件，然后根据 autoPlay 决定是否自动打开放映窗口
-      const tempDir = path.join(app.getPath('temp'), 'examaware-central-control')
-      const prefix = filename || 'central-push'
-      const tempFile = path.join(
-        tempDir,
-        `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.ea2`
-      )
+      // 1. 确定持久化存储路径
+      const targetDir = path.join(app.getPath('userData'), 'received_exams')
+
+      try {
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true })
+        }
+      } catch (err) {
+        appLogger.error(`${LOG_TAG} PUSH_EXAM_CONFIG: 创建持久化目录失败`, err as Error)
+        return
+      }
+
+      // 2. 防冲突处理
+      const baseFilename = filename || 'central-push.ea2'
+      const timestamp = Date.now()
+      const safeFilename = `${timestamp}-${baseFilename}`
+      const targetFile = path.join(targetDir, safeFilename)
 
       fs.promises
-        .mkdir(tempDir, { recursive: true })
-        .then(() => fs.promises.writeFile(tempFile, configContent, 'utf-8'))
+        .writeFile(targetFile, configContent, 'utf-8')
         .then(() => {
-          appLogger.info(`${LOG_TAG} PUSH_EXAM_CONFIG: 配置已写入临时文件: ${tempFile}`)
+          appLogger.info(
+            `${LOG_TAG} PUSH_EXAM_CONFIG: 考试配置已持久化保存至绝对路径: ${targetFile}`
+          )
 
           // 自动打开放映窗口 —— 与从编辑器打开 Player 的逻辑一致
           // createPlayerWindow 内部会读取文件、setSharedConfig、并推送给渲染进程
           if (autoPlay) {
             appLogger.info(`${LOG_TAG} PUSH_EXAM_CONFIG: 自动打开放映窗口`)
-            createPlayerWindow(tempFile)
+            createPlayerWindow(targetFile)
           }
         })
         .catch((err) => {
-          appLogger.warn(`${LOG_TAG} PUSH_EXAM_CONFIG: 写入临时文件失败`, err as Error)
+          appLogger.error(`${LOG_TAG} PUSH_EXAM_CONFIG: 写入持久化文件失败`, err as Error)
         })
 
       // 更新内存中的共享配置（供其他窗口通过 IPC 获取）
@@ -629,14 +657,17 @@ export class CentralControlClient {
 
       // 广播通知渲染进程（主窗口等）刷新配置列表
       this.broadcastToWindows('central-control:exam-config-pushed', {
-        tempFile,
+        // 为了兼容之前的 IPC 调用，多传几个 alias 变量
+        tempFile: targetFile,
+        targetFile: targetFile,
+        filePath: targetFile,
         autoPlay,
         timestamp: Date.now()
       })
 
       appLogger.info(`${LOG_TAG} PUSH_EXAM_CONFIG: 考试配置已下发 (autoPlay=${autoPlay})`)
     } catch (error) {
-      appLogger.error(`${LOG_TAG} PUSH_EXAM_CONFIG 处理失败`, error as Error)
+      appLogger.error(`${LOG_TAG} PUSH_EXAM_CONFIG 整体处理失败`, error as Error)
     }
   }
 

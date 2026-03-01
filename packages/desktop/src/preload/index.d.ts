@@ -82,7 +82,9 @@ declare global {
         send: (peerId: string, config: string) => Promise<any>
       }
       centralControl: {
+        getStatus: () => Promise<string>
         onStatusChanged: (listener: (status: string) => void) => () => void
+        openDir: () => Promise<void>
       }
       logging: {
         getConfig: () => Promise<any>

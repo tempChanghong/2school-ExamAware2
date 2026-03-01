@@ -37,9 +37,27 @@ const status = ref<CentralControlStatus>('DISCONNECTED')
  * ```
  */
 export function useCentralControl(): CentralControlState {
-  // 仅首次调用时注册 IPC 监听
+  // 仅首次调用时注册 IPC 监听并拉取当前状态
   if (!initialized) {
     initialized = true
+
+    // 1. 同步后台最新状态
+    window.api?.centralControl
+      ?.getStatus?.()
+      ?.then((currentStatus: string) => {
+        if (
+          currentStatus === 'CONNECTING' ||
+          currentStatus === 'CONNECTED' ||
+          currentStatus === 'DISCONNECTED'
+        ) {
+          status.value = currentStatus as CentralControlStatus
+        }
+      })
+      ?.catch((err) => {
+        console.warn('[useCentralControl] 拉取初始状态失败', err)
+      })
+
+    // 2. 注册长效事件监听
     try {
       window.api?.centralControl?.onStatusChanged?.((newStatus: string) => {
         if (
