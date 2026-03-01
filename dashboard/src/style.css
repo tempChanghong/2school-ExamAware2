@@ -1,0 +1,80 @@
+/* ===== ExamAware2 Admin Dashboard — Global Styles ===== */
+
+:root {
+  /* Color Palette */
+  --ea-bg-primary: #0a0e1a;
+  --ea-bg-secondary: #111827;
+  --ea-bg-card: #1a2234;
+  --ea-bg-card-hover: #1e2a40;
+  --ea-border: #2a3554;
+  --ea-text-primary: #e2e8f0;
+  --ea-text-secondary: #94a3b8;
+  --ea-text-muted: #64748b;
+  --ea-accent: #3b82f6;
+  --ea-accent-glow: rgba(59, 130, 246, 0.25);
+  --ea-success: #22c55e;
+  --ea-success-glow: rgba(34, 197, 94, 0.3);
+  --ea-danger: #ef4444;
+  --ea-warning: #f59e0b;
+
+  /* Spacing */
+  --ea-radius: 12px;
+  --ea-radius-sm: 8px;
+
+  /* Transitions */
+  --ea-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family:
+    "Inter",
+    "SF Pro Display",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans SC",
+    sans-serif;
+  background: var(--ea-bg-primary);
+  color: var(--ea-text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ea-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ea-text-muted);
+}
+
+/* ---------- Element Plus Dark Overrides ---------- */
+.el-message-box {
+  --el-messagebox-title-color: var(--ea-text-primary);
+}
