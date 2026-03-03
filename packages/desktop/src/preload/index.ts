@@ -61,6 +61,14 @@ const api = {
   player: {
     openFromEditor: (data: string) => ipcRenderer.invoke('player:open-from-editor', data)
   },
+  exam: {
+    /**
+     * 从远程 URL 下载 .ea2 / .json 配置文件并启动放映器。
+     * 主进程天然绕过浏览器 CORS 限制。
+     */
+    playFromUrl: (url: string) =>
+      ipcRenderer.invoke('play-from-url', url) as Promise<{ success: boolean; error?: string }>
+  },
   plugins: {
     list: () => ipcRenderer.invoke('plugin:list'),
     toggle: (name: string, enabled: boolean) => ipcRenderer.invoke('plugin:toggle', name, enabled),

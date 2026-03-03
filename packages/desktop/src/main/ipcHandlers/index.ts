@@ -34,6 +34,7 @@ import { LoggingIpcController } from '../ipc/loggingController'
 import { HttpApiController } from '../ipc/httpApiController'
 import { CastController } from '../ipc/castController'
 import { getSharedConfig, setSharedConfig } from '../state/sharedConfigStore'
+import { registerPlayFromUrlHandler } from './playFromUrlHandler'
 
 // minimal disposer group for main process
 function createDisposerGroup() {
@@ -724,6 +725,9 @@ export function registerIpcHandlers(ctx?: MainContext): () => void {
   if (ctx)
     ctx.ipc.handle('open-file-dialog', (_e, options?: OpenDialogOptions) => openFile(options))
   else group.add(handle('open-file-dialog', (_e, options?: OpenDialogOptions) => openFile(options)))
+
+  // ===== 从 URL 放映（download & play） =====
+  group.add(registerPlayFromUrlHandler(ctx))
 
   return () => group.disposeAll()
 }

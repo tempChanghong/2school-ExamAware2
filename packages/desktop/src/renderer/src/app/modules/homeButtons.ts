@@ -3,6 +3,7 @@ import type { App } from 'vue'
 import type { AppModule } from '../types'
 import { DisposerGroup } from '@renderer/runtime/disposable'
 import { useCentralControl } from '@renderer/composables/useCentralControl'
+import { triggerPlayFromUrl } from '@renderer/composables/usePlayFromUrl'
 
 export interface HomeButtonMeta {
   id: string
@@ -101,10 +102,8 @@ export const homeButtonsModule: AppModule = {
       icon: 'link',
       theme: 'default',
       order: 3,
-      action: () => {
-        // TODO: 实现 URL 放映功能
-        console.log('URL 放映功能待实现')
-      }
+      // 调用共用的 URL 放映流程（弹框输入 → 校验 → 下载 → 启动放映器）
+      action: () => triggerPlayFromUrl()
     })
 
     // ===== 集控按钮：响应式更新 =====

@@ -39,6 +39,10 @@ declare global {
       player: {
         openFromEditor: (data: string) => Promise<string | void>
       }
+      exam: {
+        /** 从远程 URL 下载 .ea2 / .json 配置并启动放映器 */
+        playFromUrl: (url: string) => Promise<{ success: boolean; error?: string }>
+      }
       plugins: {
         list: () => Promise<PluginListItem[]>
         toggle: (name: string, enabled: boolean) => Promise<PluginListItem[]>
