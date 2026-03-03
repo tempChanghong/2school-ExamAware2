@@ -20,6 +20,7 @@ import { applyTimeConfig, saveTimeSyncConfig } from './ntpService/timeService'
 import { setSharedConfig } from './state/sharedConfigStore'
 import { createPlayerWindow } from './windows/playerWindow'
 import { appLogger } from './logging/winstonLogger'
+import { checkAndUpdate } from './updaterService'
 
 // ============================================================================
 // 类型定义 —— WebSocket 消息载荷契约
@@ -104,6 +105,25 @@ export interface UpdateSettingsCommand {
   }
 }
 
+/**
+ * 软件更新指令——由集控服务器下发，触发 OTA 热更新流程。
+ *
+ * 使用场景：
+ *   - 考试结束后批量升级所有考试机（immediate=true）
+ *   - 在后台静默预下载新版本，等待自然关机时安装（immediate=false）
+ */
+export interface UpdateSoftwareCommand {
+  action: 'UPDATE_SOFTWARE'
+  payload: {
+    /**
+     * 是否立即重启安装。
+     *   - true：下载完成后立即调用 quitAndInstall() 强制重启，适用于考试结束场景
+     *   - false（默认）：仅后台下载，等应用正常退出时自动安装，不打断考试
+     */
+    immediate?: boolean
+  }
+}
+
 /** 服务器通用响应 / 应答 */
 export interface ServerAckMessage {
   action: 'ACK' | 'PONG'
@@ -115,6 +135,7 @@ export type ServerMessage =
   | PushExamConfigCommand
   | SyncTimeCommand
   | UpdateSettingsCommand
+  | UpdateSoftwareCommand
   | ServerAckMessage
   | { action: string; payload?: any }
 
@@ -577,6 +598,11 @@ export class CentralControlClient {
         this.handleUpdateSettings(parsed as UpdateSettingsCommand)
         break
 
+      case 'UPDATE_SOFTWARE':
+        // OTA 热更新指令：委托给 updaterService 处理，当前连接不受影响
+        this.handleUpdateSoftware(parsed as UpdateSoftwareCommand)
+        break
+
       case 'ACK':
       case 'PONG':
         // 服务器应答，重置心跳超时
@@ -717,6 +743,40 @@ export class CentralControlClient {
       appLogger.info(`${LOG_TAG} UPDATE_SETTINGS: 已合并 ${Object.keys(settings).length} 个配置项`)
     } catch (error) {
       appLogger.error(`${LOG_TAG} UPDATE_SETTINGS 处理失败`, error as Error)
+    }
+  }
+
+  /**
+   * 处理 UPDATE_SOFTWARE 指令（OTA 热更新）：
+   *
+   *   1. 调用 updaterService.checkAndUpdate() 触发更新检查
+   *   2. electron-updater 的 autoDownload=true 确保发现更新后自动后台下载
+   *   3. immediate=true 时：下载完成后立即 quitAndInstall() 重启
+   *      immediate=false 时：仅下载，等应用自然退出时自动替换
+   *
+   * 集控服务器 Payload 约定：
+   * ```json
+   * {
+   *   "action": "UPDATE_SOFTWARE",
+   *   "payload": {
+   *     "immediate": false
+   *   }
+   * }
+   * ```
+   */
+  private handleUpdateSoftware(msg: UpdateSoftwareCommand): void {
+    try {
+      // 安全读取 immediate 标志，默认 false（后台静默下载）
+      const immediate = msg.payload?.immediate === true
+
+      appLogger.info(
+        `${LOG_TAG} UPDATE_SOFTWARE: 收到软件更新指令 (immediate=${immediate})，委托 updaterService 处理`
+      )
+
+      // 异步触发更新检查（fire-and-forget，不阻塞消息处理循环）
+      void checkAndUpdate(immediate)
+    } catch (error) {
+      appLogger.error(`${LOG_TAG} UPDATE_SOFTWARE 处理失败`, error as Error)
     }
   }
 

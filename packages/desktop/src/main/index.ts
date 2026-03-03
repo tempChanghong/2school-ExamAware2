@@ -31,6 +31,9 @@ import { applyDeepLinkControllers } from './deepLink/decorators'
 import { CoreDeepLinkController } from './deepLink/coreDeepLinkController'
 import { composeVersionLabel } from '../shared/appInfo'
 import { CentralControlClient } from './centralControlClient'
+import { applyAutoStart, readBootConfig, shouldStartHidden } from './bootService'
+import { initUpdater } from './updaterService'
+import { onConfigChanged } from './configStore'
 import bannerText from './banner.txt?raw'
 
 protocol.registerSchemesAsPrivileged([
@@ -310,6 +313,8 @@ app.whenReady().then(async () => {
     appLogger.error('Failed to initialize plugin host', error as Error)
   }
 
+  // ——— 开机自启检测 ———
+  // 检测是否由操作系统登录项触发启动（不是用户手动点击图标）
   const isAutoStart = (() => {
     try {
       if (process.platform === 'darwin' || process.platform === 'win32') {
@@ -318,15 +323,53 @@ app.whenReady().then(async () => {
       }
     } catch {}
     // 统一参数开关（Linux .desktop 与通用备用）
-    return process.argv.includes('--autostart')
+    return process.argv.includes('--autostart') || process.argv.includes('--hidden')
   })()
+
+  // ——— 隐藏窗口模式检测 ———
+  // 综合判断 --hidden 参数 / macOS wasOpenedAsHidden / 配置中的 startHidden
+  // 全部逻辑封装在 bootService.shouldStartHidden()，此处只需传入 isAutoStart
+  const startHidden = shouldStartHidden(isAutoStart)
+
+  // ——— 初始化静默热更新服务 ———
+  // 必须在 app.isReady() 后调用，且仅初始化一次
+  try {
+    initUpdater()
+  } catch (error) {
+    appLogger.error('Failed to initialize updater service', error as Error)
+  }
+
+  // ——— 同步当前 boot 配置到操作系统登录项 ———
+  // 确保每次启动都与 configStore 中的 boot.autoStart 保持一致
+  try {
+    applyAutoStart(readBootConfig())
+  } catch (error) {
+    appLogger.error('Failed to apply auto-start settings on startup', error as Error)
+  }
+
+  // ——— 热监听 boot 配置变更 ———
+  // 用户在设置页修改开机自启选项时，立即向操作系统同步，无需重启应用
+  onConfigChanged((cfg) => {
+    try {
+      const bootCfg = cfg?.boot ?? {}
+      const newCfg = {
+        autoStart: typeof bootCfg.autoStart === 'boolean' ? bootCfg.autoStart : false,
+        startHidden: typeof bootCfg.startHidden === 'boolean' ? bootCfg.startHidden : false
+      }
+      applyAutoStart(newCfg)
+    } catch (error) {
+      appLogger.error('Failed to apply auto-start settings on config change', error as Error)
+    }
+  })
 
   // 如果有文件要打开，直接打开编辑器
   if (fileToOpen) {
     createEditorWindow(fileToOpen)
     fileToOpen = null
-  } else if (isAutoStart) {
-    // 开机自启：不弹主窗口
+  } else if (startHidden) {
+    // 开机自启 + 隐窗模式：不创建主窗口，仅驻留托盘
+    // ensureAppTray() 已在上方调用（line ~215），此处无需重复
+    appLogger.info('[app] 以隐窗模式启动，主窗口已跳过创建，驻留托盘区')
   } else {
     createMainWindow()
   }
