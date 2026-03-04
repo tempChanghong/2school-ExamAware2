@@ -32,7 +32,7 @@
       <template #left:logo>
         <div class="school-logo-container">
           <img :src="schoolBadge" class="school-badge" alt="校徽" />
-          <span class="school-logo-text">天津市第二中学考试看板</span>
+          <span class="school-logo-text">天津市第二中学 考试看板</span>
         </div>
       </template>
 
