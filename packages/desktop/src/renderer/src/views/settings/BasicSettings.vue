@@ -22,6 +22,21 @@
           </div>
         </div>
 
+        <div class="settings-item settings-item--sub" v-if="autoStart">
+          <div class="settings-item-icon">
+            <TIcon name="system-quiet" size="22px" />
+          </div>
+          <div class="settings-item-main">
+            <div class="settings-item-title">静默启动</div>
+            <div class="settings-item-desc">
+              开机自启时不显示主窗口，仅驻留系统托盘区，需要时再从托盘唤起。
+            </div>
+          </div>
+          <div class="settings-item-action">
+            <t-checkbox v-model="startHidden" />
+          </div>
+        </div>
+
         <t-divider />
 
         <div class="settings-item">
@@ -93,6 +108,7 @@ import { useSettingRef } from '@renderer/composables/useSetting'
 import { Icon as TIcon } from 'tdesign-icons-vue-next'
 
 const autoStart = useSettingRef<boolean>('behavior.autoStart', false)
+const startHidden = useSettingRef<boolean>('boot.startHidden', false)
 
 async function syncAutoStartFromSystem() {
   try {

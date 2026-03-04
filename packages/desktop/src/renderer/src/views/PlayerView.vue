@@ -28,6 +28,14 @@
       @exam-switch="handleExamSwitch"
       @error="handleError"
     >
+      <!-- 覆盖默认 logo，替换为校徽 + 学校标题 -->
+      <template #left:logo>
+        <div class="school-logo-container">
+          <img :src="schoolBadge" class="school-badge" alt="校徽" />
+          <span class="school-logo-text">天津市第二中学考试看板</span>
+        </div>
+      </template>
+
       <!-- 额外内容插槽保留为空，由 ExamPlayer 内部处理考场号设置 -->
       <template #extra></template>
     </ExamPlayer>
@@ -40,6 +48,8 @@ import { NotifyPlugin } from 'tdesign-vue-next'
 import { ExamPlayer, type PlayerConfig } from '@dsz-examaware/player'
 // 导入 player 包的样式
 import '@dsz-examaware/player/dist/player.css'
+// 校徽图片
+import schoolBadge from '@renderer/assets/school.png'
 import { useConfigLoader } from '@renderer/composables/useConfigLoader'
 import { ElectronTimeProvider } from '@renderer/adapters/ElectronTimeProvider'
 import { RecentFileManager } from '@renderer/core/recentFileManager'
@@ -368,6 +378,31 @@ if (typeof window !== 'undefined') {
   overflow: hidden;
   background-color: #05070d;
   color: var(--td-text-color-anti);
+}
+
+/* ===== 校徽 + 学校名称 Logo 区域 ===== */
+.school-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: calc((40px * 100vh / 1080px) * var(--ui-scale, 1) * var(--density-scale, 1));
+}
+
+.school-badge {
+  width: calc(var(--ui-scale, 1) * 2.4rem);
+  height: calc(var(--ui-scale, 1) * 2.4rem);
+  object-fit: contain;
+  border-radius: 4px;
+  filter: drop-shadow(0 0 8px rgba(100, 160, 255, 0.45));
+  flex-shrink: 0;
+}
+
+.school-logo-text {
+  color: #ffffff;
+  font-size: calc(var(--ui-scale, 1) * 1.25rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 :global(:root[data-player-force-dark]) {
